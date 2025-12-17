@@ -1,0 +1,48 @@
+# Environment files
+.env
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Demo video files (too large for git)
+*.mp4
+*.avi
+*.mov
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.txt

@@ -1,0 +1,73 @@
+# LinkedIn Automation Configuration
+
+# Browser Configuration
+browser:
+  headless: false
+  viewport:
+    width_min: 1280
+    width_max: 1920
+    height_min: 720
+    height_max: 1080
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Search Configuration
+search:
+  keywords: "Software Engineer"
+  location: "San Francisco"
+  max_profiles: 50
+  scroll_delay_min: 1000  # milliseconds
+  scroll_delay_max: 3000
+
+# Connection Configuration
+connection:
+  daily_limit: 10
+  cooldown_min: 5  # minutes
+  cooldown_max: 15
+  note_template: "Hi {{.FirstName}}, I came across your profile and would love to connect!"
+
+# Messaging Configuration
+messaging:
+  enabled: true
+  follow_up_template: "Thanks for connecting, {{.FirstName}}! Looking forward to staying in touch."
+  delay_min: 300  # seconds
+  delay_max: 900
+
+# Scheduler Configuration
+scheduler:
+  work_hour_start: 9
+  work_hour_end: 18
+  break_interval_min: 60  # minutes
+  break_duration_min: 10
+  enable_random_breaks: true
+
+# Stealth Configuration
+stealth:
+  mouse:
+    bezier_points: 50
+    overshoot_range: 5  # pixels
+    correction_delay_min: 50  # milliseconds
+    correction_delay_max: 150
+  typing:
+    delay_min: 80  # milliseconds per character
+    delay_max: 250
+    typo_probability: 0.05  # 5% chance of typo
+    word_pause_multiplier: 2.0
+  timing:
+    think_time_min: 300  # milliseconds
+    think_time_max: 1200
+    action_delay_min: 1000
+    action_delay_max: 3000
+
+# Database Configuration
+database:
+  path: "./linkedin_bot.db"
+  enable_wal: true
+
+# Logging Configuration
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "text"  # text or json
+  output: "stdout"  # stdout or file path
