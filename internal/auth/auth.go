@@ -265,10 +265,101 @@ func (a *Authenticator) tryRestoreSession() error {
 	// Check if we're logged in
 	currentURL := a.page.MustInfo().URL
 	if strings.Contains(currentURL, "/login") {
-		return fmt.Errorf("session expired")
+		// Check if this is the "Welcome back" page (password-only login)
+		a.logger.Info("Detected 'Welcome back' page, entering password...")
+		if err := a.handleWelcomeBack(); err != nil {
+			return fmt.Errorf("session expired and password login failed: %w", err)
+		}
+		a.logger.Info("Password authentication successful")
+		return nil
 	}
 	
 	a.logger.Info("Session is still valid")
+	return nil
+}
+
+// handleWelcomeBack handles the "Welcome back" page where only password is needed
+func (a *Authenticator) handleWelcomeBack() error {
+	a.logger.Info("Handling 'Welcome back' page...")
+	
+	// Get password from environment
+	password := os.Getenv("LINKEDIN_PASSWORD")
+	if password == "" {
+		return fmt.Errorf("LINKEDIN_PASSWORD not set")
+	}
+	
+	// Wait a bit for page to stabilize
+	time.Sleep(stealth.ShortPause())
+	
+	// Check if password field exists
+	hasPasswordField, _, _ := a.page.Has("#password")
+	if !hasPasswordField {
+		// Try alternative selector
+		hasPasswordField, _, _ = a.page.Has("input[type='password']")
+	}
+	
+	if !hasPasswordField {
+		return fmt.Errorf("password field not found on welcome back page")
+	}
+	
+	// Fill password field
+	a.logger.Info("Entering password...")
+	passwordSelector := "#password"
+	element, err := a.page.Element(passwordSelector)
+	if err != nil {
+		// Try alternative selector
+		element, err = a.page.Element("input[type='password']")
+		if err != nil {
+			return fmt.Errorf("password field not found: %w", err)
+		}
+	}
+	
+	// Click to focus
+	element.Click(proto.InputMouseButtonLeft, 1)
+	time.Sleep(stealth.ShortPause())
+	
+	// Type password with human-like behavior
+	for _, char := range password {
+		a.page.Keyboard.Type(input.Key(char))
+		time.Sleep(stealth.TypeCharacter())
+	}
+	
+	time.Sleep(stealth.ThinkTime())
+	
+	// Click sign in button
+	a.logger.Info("Clicking Sign in button...")
+	signInBtn, err := a.page.Element("button[type='submit']")
+	if err != nil {
+		// Try alternative selector
+		signInBtn, err = a.page.Element("button.btn__primary--large")
+		if err != nil {
+			return fmt.Errorf("sign in button not found: %w", err)
+		}
+	}
+	
+	if err := signInBtn.Click(proto.InputMouseButtonLeft, 1); err != nil {
+		return fmt.Errorf("failed to click sign in: %w", err)
+	}
+	
+	// Wait for navigation
+	time.Sleep(stealth.PageLoadWait())
+	
+	// Check if login was successful
+	currentURL := a.page.MustInfo().URL
+	if strings.Contains(currentURL, "/login") {
+		return fmt.Errorf("password login failed - still on login page")
+	}
+	
+	if strings.Contains(currentURL, checkpointURL) {
+		return a.handleCheckpoint()
+	}
+	
+	// Save session
+	a.logger.Info("Saving new session after password login...")
+	if err := a.saveSession(); err != nil {
+		a.logger.Warnf("Failed to save session: %v", err)
+	}
+	
 	return nil
 }
 

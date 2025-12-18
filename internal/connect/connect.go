@@ -321,17 +321,22 @@ func (c *Connector) addNote(name string) error {
 
 // clickWithMouse clicks an element with human-like mouse movement
 func (c *Connector) clickWithMouse(element *rod.Element) error {
-	// Scroll element into view
+	// Scroll element into view using JavaScript (more reliable than ScrollIntoView)
 	c.logger.Info("Scrolling element into view...")
-	if err := element.ScrollIntoView(); err != nil {
-		c.logger.Warnf("Failed to scroll into view: %v", err)
+	_, err := element.Eval("() => this.scrollIntoView({behavior: 'smooth', block: 'center'})")
+	if err != nil {
+		c.logger.Warnf("Failed to scroll into view with JS: %v", err)
 	}
 	
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(800 * time.Millisecond) // Wait for smooth scroll
 	
-	// Wait for element to be visible and enabled
-	if err := element.WaitVisible(); err != nil {
-		c.logger.Warnf("Element not visible: %v", err)
+	// Try to wait for visibility but don't block if it fails
+	c.logger.Info("Checking element visibility...")
+	visibleErr := element.Timeout(2 * time.Second).WaitVisible()
+	if visibleErr != nil {
+		c.logger.Warnf("Element visibility check failed, proceeding anyway: %v", visibleErr)
+	} else {
+		c.logger.Info("Element is visible")
 	}
 	
 	time.Sleep(stealth.HoverDelay())
@@ -339,24 +344,34 @@ func (c *Connector) clickWithMouse(element *rod.Element) error {
 	// Try multiple click methods
 	c.logger.Info("Attempting to click element...")
 	
-	// Method 1: Direct click with proto
-	err := element.Click(proto.InputMouseButtonLeft, 1)
+	// Method 1: JavaScript click (most reliable, use first for stubborn elements)
+	c.logger.Info("Trying JavaScript click...")
+	_, jsErr := element.Eval("() => this.click()")
+	if jsErr == nil {
+		c.logger.Info("JavaScript click successful!")
+		return nil
+	}
+	c.logger.Warnf("JavaScript click failed: %v, trying direct click", jsErr)
+	
+	// Method 2: Direct click with proto
+	c.logger.Info("Trying direct click...")
+	err = element.Click(proto.InputMouseButtonLeft, 1)
 	if err != nil {
-		c.logger.Warnf("Direct click failed: %v, trying alternative methods", err)
+		c.logger.Errorf("Direct click also failed: %v", err)
 		
-		// Method 2: Try MustClick (doesn't return error, just panics on fail)
+		// Method 3: Force click with MustClick (will panic if fails, but we'll recover)
+		c.logger.Info("Trying MustClick as last resort...")
 		defer func() {
 			if r := recover(); r != nil {
 				c.logger.Errorf("MustClick panicked: %v", r)
 			}
 		}()
-		
 		element.MustClick()
 		c.logger.Info("MustClick succeeded!")
 		return nil
 	}
 	
-	c.logger.Info("Click successful!")
+	c.logger.Info("Direct click successful!")
 	return nil
 }
 
