@@ -10,6 +10,7 @@ import (
 	"linkedin-automation-poc/internal/browser"
 	"linkedin-automation-poc/internal/connect"
 	"linkedin-automation-poc/internal/logger"
+	"linkedin-automation-poc/internal/message"
 	"linkedin-automation-poc/internal/scheduler"
 	"linkedin-automation-poc/internal/search"
 	"linkedin-automation-poc/internal/storage"
@@ -97,10 +98,30 @@ func main() {
 	// Send connection requests
 	appLogger.Info(" Starting connection request automation...")
 	connector := connect.NewConnector(page, store, appLogger)
+	requestsSent := 0
 	if err := connector.SendConnectionRequests(); err != nil {
 		appLogger.Errorf("Connection requests failed: %v", err)
 	} else {
+		requestsSent = connector.GetRequestsSentToday()
 		appLogger.Info(" Connection request session complete")
+	}
+	fmt.Println()
+
+	// Note: Connection detection is slow and unreliable
+	// For testing, manually mark connections as accepted:
+	// go run mark_accepted.go
+	acceptedCount := 0
+	fmt.Println()
+
+	// Send follow-up messages to accepted connections
+	appLogger.Info(" Starting follow-up messaging...")
+	messenger := message.NewMessenger(page, store, appLogger)
+	messagesSent := 0
+	if sent, err := messenger.SendFollowUpMessages(); err != nil {
+		appLogger.Errorf("Messaging failed: %v", err)
+	} else {
+		messagesSent = sent
+		appLogger.Info(" Follow-up messaging complete")
 	}
 	fmt.Println()
 
@@ -108,8 +129,9 @@ func main() {
 	fmt.Println("═══════════════════════════════════════════════════════════")
 	fmt.Println("                    SESSION SUMMARY")
 	fmt.Println("═══════════════════════════════════════════════════════════")
-	fmt.Printf("  Requests sent today: %d\n", connector.GetRequestsSentToday())
-	fmt.Printf("  Daily limit: %d\n", connector.GetRequestsSentToday()) // Will be improved
+	fmt.Printf("  📤 Connection requests sent: %d\n", requestsSent)
+	fmt.Printf("  ✅ Connections accepted: %d\n", acceptedCount)
+	fmt.Printf("  💬 Follow-up messages sent: %d\n", messagesSent)
 	fmt.Println()
 	fmt.Println("  ✅ All automation tasks complete!")
 	fmt.Println("  📊 Check linkedin_bot.db for detailed logs")

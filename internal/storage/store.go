@@ -181,6 +181,81 @@ func (s *Store) LoadSession() (string, error) {
 	return cookies, err
 }
 
+// GetAcceptedConnections returns connections that have been accepted
+func (s *Store) GetAcceptedConnections() ([]Profile, error) {
+	query := `SELECT p.id, p.url, p.name, p.status, p.discovered_at 
+	          FROM profiles p
+	          INNER JOIN connection_requests cr ON p.url = cr.profile_url
+	          WHERE cr.accepted = 1 AND p.status != 'messaged'
+	          ORDER BY cr.sent_at DESC`
+	
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var profiles []Profile
+	for rows.Next() {
+		var p Profile
+		if err := rows.Scan(&p.ID, &p.URL, &p.Name, &p.Status, &p.DiscoveredAt); err != nil {
+			return nil, err
+		}
+		profiles = append(profiles, p)
+	}
+	
+	return profiles, rows.Err()
+}
+
+// HasSentMessage checks if a message was sent to a profile
+func (s *Store) HasSentMessage(profileURL string) (bool, error) {
+	query := `SELECT COUNT(*) FROM messages WHERE profile_url = ?`
+	var count int
+	err := s.db.QueryRow(query, profileURL).Scan(&count)
+	return count > 0, err
+}
+
+// UpdateProfileStatus updates the status of a profile
+func (s *Store) UpdateProfileStatus(profileURL, status string) error {
+	query := `UPDATE profiles SET status = ?, last_action_at = CURRENT_TIMESTAMP 
+	          WHERE url = ?`
+	_, err := s.db.Exec(query, status, profileURL)
+	return err
+}
+
+// GetPendingConnectionRequests returns connections that haven't been accepted yet
+func (s *Store) GetPendingConnectionRequests() ([]Profile, error) {
+	query := `SELECT DISTINCT p.id, p.url, p.name, p.status, p.discovered_at 
+	          FROM profiles p
+	          INNER JOIN connection_requests cr ON p.url = cr.profile_url
+	          WHERE cr.accepted = 0
+	          ORDER BY cr.sent_at DESC`
+	
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var profiles []Profile
+	for rows.Next() {
+		var p Profile
+		if err := rows.Scan(&p.ID, &p.URL, &p.Name, &p.Status, &p.DiscoveredAt); err != nil {
+			return nil, err
+		}
+		profiles = append(profiles, p)
+	}
+	
+	return profiles, rows.Err()
+}
+
+// MarkConnectionAccepted marks a connection as accepted
+func (s *Store) MarkConnectionAccepted(profileURL string) error {
+	query := `UPDATE connection_requests SET accepted = 1 WHERE profile_url = ?`
+	_, err := s.db.Exec(query, profileURL)
+	return err
+}
+
 // Close closes the database connection
 func (s *Store) Close() error {
 	return s.db.Close()

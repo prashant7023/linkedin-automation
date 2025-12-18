@@ -45,6 +45,14 @@ func ReadingDelay(contentLength int) time.Duration {
 	return time.Duration(finalSeconds * float64(time.Second))
 }
 
+// Random returns a random number between min and max (inclusive)
+func Random(min, max int) int {
+	if max <= min {
+		return min
+	}
+	return rand.Intn(max-min+1) + min
+}
+
 // HoverDelay returns time to hover over an element before clicking
 func HoverDelay() time.Duration {
 	// 200-800ms hover time
